@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Simpleparcer Bot
-Version: 2.8.05 (28/05/26)
+Version: 2.8.06 (28/05/26)
 """
 
 import asyncio
@@ -66,6 +66,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# === ЗАЩИТА: ОБЁРТКА ДЛЯ handle_project_name ===
+async def safe_handle_project_name(update, context):
+    """Безопасный обработчик названия проекта — жёсткая проверка флага."""
+    if not context.user_data.get('awaiting_project_name'):
+        # Флаг не установлен — пропускаем, чтобы другие ConversationHandler'ы могли обработать
+        return False  # Возвращаем False, чтобы обработка продолжилась
+    # Флаг установлен — обрабатываем название проекта
+    return await handle_project_name(update, context)
+
+
+# === ЗАЩИТА: ОБЁРТКА ДЛЯ set_signature_input ===
+async def safe_set_signature_input(update, context):
+    """Безопасный обработчик подписи — проверяет, что диалог подписи активен."""
+    if not context.user_data.get('temp_project_id'):
+        return False  # Пропускаем, даём другим обработчикам шанс
+    if context.user_data.get('awaiting_project_name'):
+        return False
+    if context.user_data.get('awaiting_broadcast'):
+        return False
+    return await set_signature_input(update, context)
+
+
 async def main():
     await init_db()
     logger.info("Database initialized")
@@ -118,7 +140,7 @@ async def main():
     app.add_handler(CallbackQueryHandler(admin_back_callback, pattern="^admin_back$"))
     app.add_handler(CallbackQueryHandler(admin_callback, pattern="^(admin_|user_manage_|tariff_set_|user_tariff_|extend_user_|deactivate_user_|activate_user_|tariff_for_|set_tariff_|admin_set_tariff|admin_extend_trial|admin_deactivate|admin_activate)"))
     
-    # СНАЧАЛА обработчики для источников (с более специфичными паттернами)
+    # Обработчики для источников
     app.add_handler(CallbackQueryHandler(edit_source_callback, pattern="^edit_source_"))
     app.add_handler(CallbackQueryHandler(delete_source_callback, pattern="^del_source_"))
     app.add_handler(CallbackQueryHandler(confirm_delete_source_callback, pattern="^confirm_delete_source$"))
@@ -298,7 +320,7 @@ async def main():
         ],
         states={
             AWAITING_SIGNATURE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, set_signature_input),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, safe_set_signature_input),  # ← защищённая версия
                 CommandHandler("start", start),
                 CommandHandler("help", help_command),
                 CommandHandler("cancel", cancel),
@@ -322,6 +344,8 @@ async def main():
         per_message=False
     )
     
+    # === ВАЖНО: Порядок регистрации ===
+    # ConversationHandler'ы ДОЛЖНЫ быть зарегистрированы ДО общего MessageHandler
     app.add_handler(add_source_conv)
     app.add_handler(edit_source_conv)
     app.add_handler(add_target_conv)
@@ -330,13 +354,15 @@ async def main():
     app.add_handler(set_signature_conv)
     app.add_handler(broadcast_conv)
     
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_project_name))
+    # Общий обработчик текста — только если не активен ни один ConversationHandler
+    # Возвращает False, если флаг не установлен, чтобы не блокировать другие обработчики
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, safe_handle_project_name))
     
     await app.initialize()
     await app.start()
     await app.updater.start_polling(allowed_updates=["message", "callback_query"])
     
-    logger.info("🟢 Bot started (version 1.9.05)")
+    logger.info("🟢 Bot started (version 2.8.06)")
     
     try:
         await asyncio.Event().wait()
