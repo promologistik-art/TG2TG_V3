@@ -70,9 +70,7 @@ logger = logging.getLogger(__name__)
 async def safe_handle_project_name(update, context):
     """Безопасный обработчик названия проекта — жёсткая проверка флага."""
     if not context.user_data.get('awaiting_project_name'):
-        # Флаг не установлен — пропускаем, чтобы другие ConversationHandler'ы могли обработать
-        return False  # Возвращаем False, чтобы обработка продолжилась
-    # Флаг установлен — обрабатываем название проекта
+        return False
     return await handle_project_name(update, context)
 
 
@@ -80,7 +78,7 @@ async def safe_handle_project_name(update, context):
 async def safe_set_signature_input(update, context):
     """Безопасный обработчик подписи — проверяет, что диалог подписи активен."""
     if not context.user_data.get('temp_project_id'):
-        return False  # Пропускаем, даём другим обработчикам шанс
+        return False
     if context.user_data.get('awaiting_project_name'):
         return False
     if context.user_data.get('awaiting_broadcast'):
@@ -145,8 +143,7 @@ async def main():
     app.add_handler(CallbackQueryHandler(delete_source_callback, pattern="^del_source_"))
     app.add_handler(CallbackQueryHandler(confirm_delete_source_callback, pattern="^confirm_delete_source$"))
     app.add_handler(CallbackQueryHandler(cancel_delete_source_callback, pattern="^cancel_delete_source$"))
-    app.add_handler(CallbackQueryHandler(add_keywords_yes_callback, pattern="^add_keywords_yes$"))
-    app.add_handler(CallbackQueryHandler(add_keywords_skip_callback, pattern="^add_keywords_skip$"))
+    # add_keywords_yes и add_keywords_skip убраны — они только внутри ConversationHandler
     app.add_handler(CallbackQueryHandler(back_to_sources_callback, pattern="^back_to_sources$"))
     
     # Обработчики для целей
@@ -320,7 +317,7 @@ async def main():
         ],
         states={
             AWAITING_SIGNATURE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, safe_set_signature_input),  # ← защищённая версия
+                MessageHandler(filters.TEXT & ~filters.COMMAND, safe_set_signature_input),
                 CommandHandler("start", start),
                 CommandHandler("help", help_command),
                 CommandHandler("cancel", cancel),
@@ -344,8 +341,6 @@ async def main():
         per_message=False
     )
     
-    # === ВАЖНО: Порядок регистрации ===
-    # ConversationHandler'ы ДОЛЖНЫ быть зарегистрированы ДО общего MessageHandler
     app.add_handler(add_source_conv)
     app.add_handler(edit_source_conv)
     app.add_handler(add_target_conv)
@@ -354,8 +349,6 @@ async def main():
     app.add_handler(set_signature_conv)
     app.add_handler(broadcast_conv)
     
-    # Общий обработчик текста — только если не активен ни один ConversationHandler
-    # Возвращает False, если флаг не установлен, чтобы не блокировать другие обработчики
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, safe_handle_project_name))
     
     await app.initialize()
