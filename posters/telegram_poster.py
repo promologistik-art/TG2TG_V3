@@ -160,6 +160,7 @@ class TelegramPoster:
                 error_str = str(e).lower()
                 logger.error(f"Failed to send media: {e}")
                 
+                # Fallback 1: пробуем без parse_mode
                 if parse_mode and "parse" in error_str:
                     try:
                         with open(media_path, "rb") as f:
@@ -187,6 +188,17 @@ class TelegramPoster:
                     except:
                         pass
                 
+                # === ИСПРАВЛЕНИЕ: не публикуем текст, если текст удалён ===
+                if remove_text:
+                    try:
+                        os.remove(media_path)
+                    except:
+                        pass
+                    error_text = str(e)[:80].replace("\n", " ")
+                    await self._mark_failed(queue_item, f"Медиа не отправилось, текст удалён: {error_text}")
+                    return False
+                
+                # Fallback 2: только текст (если текст не удалён)
                 if caption:
                     try:
                         await self.bot.send_message(
@@ -208,6 +220,32 @@ class TelegramPoster:
                 
             except Exception as e:
                 logger.error(f"Unexpected error sending media: {e}")
+                
+                # === ИСПРАВЛЕНИЕ: не публикуем текст, если текст удалён ===
+                if remove_text:
+                    try:
+                        os.remove(media_path)
+                    except:
+                        pass
+                    await self._mark_failed(queue_item, f"Медиа не отправилось, текст удалён")
+                    return False
+                
+                # Fallback: только текст (если текст не удалён)
+                if caption:
+                    try:
+                        await self.bot.send_message(
+                            chat_id=real_chat_id, text=caption, 
+                            disable_web_page_preview=True
+                        )
+                        try:
+                            os.remove(media_path)
+                        except:
+                            pass
+                        await self._mark_published(queue_item)
+                        return True
+                    except:
+                        pass
+                
                 error_text = str(e)[:80].replace("\n", " ")
                 await self._mark_failed(queue_item, f"Ошибка отправки: {error_text}")
                 return False
