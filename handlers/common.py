@@ -12,10 +12,10 @@ logger = logging.getLogger(__name__)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Сбрасываем все активные диалоги
-    from .settings import reset_all_dialogs
-    await reset_all_dialogs(update, context)
+    """Обработчик /start — полностью сбрасывает все диалоги и показывает приветствие."""
     
+    # === ПОЛНЫЙ СБРОС ВСЕХ ДИАЛОГОВ ===
+    # Очищаем все данные пользователя — это завершит все ConversationHandler'ы
     context.user_data.clear()
     
     user = update.effective_user
@@ -55,7 +55,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 db_user.max_sources_per_project = 999
             await session.commit()
         
-        result = await session.execute(select(func.count()).select_from(Project).where(Project.user_id == user.id))
+        result = await session.execute(
+            select(func.count()).select_from(Project).where(Project.user_id == user.id)
+        )
         has_project = result.scalar() > 0
     
     if is_new_user and user.id != Config.ADMIN_ID:
@@ -68,7 +70,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
     
-    # === НОВЫЙ ТЕКСТ ПРИВЕТСТВИЯ ===
     welcome = f"👋 Привет, {user.first_name or 'пользователь'}!\n\n"
     welcome += "Я бот для автоматического парсинга и публикации постов в Telegram.\n\n"
     
@@ -77,7 +78,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif not has_project:
         welcome += "🚀 Для начала работы создайте проект: /my_projects\n\n"
     
-    # Базовые команды для всех
     welcome += (
         "📋 Основные команды:\n"
         "/my_projects — мои проекты\n"
@@ -143,6 +143,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Отменяет текущее действие и сбрасывает все диалоги."""
     context.user_data.clear()
-    await update.message.reply_text("❌ Действие отменено")
+    await update.message.reply_text("❌ Действие отменено. Все диалоги сброшены.")
     return ConversationHandler.END
