@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Simpleparcer Bot
-Version: 2.8.06 (28/05/26)
+Version: 2.8.08 (28/05/26)
 """
 
 import asyncio
@@ -143,7 +143,6 @@ async def main():
     app.add_handler(CallbackQueryHandler(delete_source_callback, pattern="^del_source_"))
     app.add_handler(CallbackQueryHandler(confirm_delete_source_callback, pattern="^confirm_delete_source$"))
     app.add_handler(CallbackQueryHandler(cancel_delete_source_callback, pattern="^cancel_delete_source$"))
-    # add_keywords_yes и add_keywords_skip убраны — они только внутри ConversationHandler
     app.add_handler(CallbackQueryHandler(back_to_sources_callback, pattern="^back_to_sources$"))
     
     # Обработчики для целей
@@ -205,7 +204,8 @@ async def main():
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     edit_source_conv = ConversationHandler(
@@ -250,7 +250,8 @@ async def main():
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     add_target_conv = ConversationHandler(
@@ -267,7 +268,8 @@ async def main():
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     set_interval_conv = ConversationHandler(
@@ -284,7 +286,8 @@ async def main():
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     set_post_interval_conv = ConversationHandler(
@@ -307,7 +310,8 @@ async def main():
             ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     set_signature_conv = ConversationHandler(
@@ -324,7 +328,8 @@ async def main():
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     broadcast_conv = ConversationHandler(
@@ -338,7 +343,8 @@ async def main():
             ]
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=False
+        per_message=False,
+        allow_reentry=True
     )
     
     app.add_handler(add_source_conv)
@@ -355,7 +361,7 @@ async def main():
     await app.start()
     await app.updater.start_polling(allowed_updates=["message", "callback_query"])
     
-    logger.info("🟢 Bot started (version 2.8.06)")
+    logger.info("🟢 Bot started (version 2.8.08)")
     
     try:
         await asyncio.Event().wait()
