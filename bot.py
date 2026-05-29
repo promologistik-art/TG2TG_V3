@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Simpleparcer Bot
-Version: 2.8.08 (28/05/26)
+Version: 2.8.09 (29/05/26)
 """
 
 import asyncio
@@ -90,7 +90,14 @@ async def main():
     await init_db()
     logger.info("Database initialized")
     
-    app = Application.builder().token(Config.BOT_TOKEN).build()
+    app = (
+        Application.builder()
+        .token(Config.BOT_TOKEN)
+        .connect_timeout(30)
+        .read_timeout(60)
+        .write_timeout(60)
+        .build()
+    )
     await setup_bot_commands(app)
     
     poster = TelegramPoster(app.bot)
@@ -361,7 +368,7 @@ async def main():
     await app.start()
     await app.updater.start_polling(allowed_updates=["message", "callback_query"])
     
-    logger.info("🟢 Bot started (version 2.8.08)")
+    logger.info("🟢 Bot started (version 2.8.09)")
     
     try:
         await asyncio.Event().wait()
