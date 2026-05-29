@@ -42,7 +42,6 @@ class Scheduler:
             if self._last_daily_report != today:
                 self._last_daily_report = today
                 await self._send_daily_report()
-                # Очистка кэша parsed_urls раз в сутки
                 from database import clear_parsed_cache
                 await clear_parsed_cache()
                 logger.info("🧹 Parsed URLs cache cleared (daily)")
@@ -250,7 +249,6 @@ class Scheduler:
                     if post.get("is_advertisement", False):
                         continue
                     
-                    # ===== ПРОВЕРКА ВОЗРАСТА ПОСТА =====
                     if source.max_age_hours and source.max_age_hours > 0:
                         if post.get("datetime"):
                             try:
@@ -262,7 +260,6 @@ class Scheduler:
                             except:
                                 pass
                     
-                    # ===== ПРОВЕРКА КЛЮЧЕВЫХ СЛОВ =====
                     if source.include_keywords:
                         keywords = [k.strip().lower() for k in source.include_keywords.split(",") if k.strip()]
                         post_text = post.get("text", "").lower()
@@ -377,26 +374,22 @@ class Scheduler:
             logger.info(f"📤 Found {len(posts_to_publish)} posts to queue")
             
             msk_now = get_moscow_time().replace(tzinfo=None)
+            # post_interval_hours теперь хранит минуты
             interval_minutes = max(
-                int(project.post_interval_hours * 60), 
-                user.min_post_interval_minutes, 
+                project.post_interval_hours,
+                user.min_post_interval_minutes,
                 Config.MIN_POST_INTERVAL_MINUTES
             )
             start_hour = project.active_hours_start
             end_hour = project.active_hours_end
             
-            # === ИСПРАВЛЕНИЕ: получаем время последнего поста в очереди ===
             last_scheduled_utc = await self._get_last_scheduled_time(project.id)
             
             if last_scheduled_utc:
-                # Конвертируем в МСК
                 last_scheduled_msk = last_scheduled_utc + timedelta(hours=3)
-                # Следующий слот = последний запланированный + интервал
                 next_time = last_scheduled_msk + timedelta(minutes=interval_minutes)
                 
-                # Проверяем, что не ушли в прошлое
                 if next_time <= msk_now:
-                    # Если следующий слот уже прошёл — начинаем от текущего времени
                     minutes_since_start = (msk_now.hour - start_hour) * 60 + msk_now.minute
                     if minutes_since_start < 0:
                         next_time = msk_now.replace(hour=start_hour, minute=0, second=0, microsecond=0)
@@ -404,7 +397,6 @@ class Scheduler:
                         slots = (minutes_since_start + interval_minutes - 1) // interval_minutes
                         next_time = msk_now.replace(hour=start_hour, minute=0, second=0, microsecond=0) + timedelta(minutes=slots * interval_minutes)
                 
-                # Проверяем активные часы
                 if next_time.hour >= end_hour:
                     next_time = next_time.replace(hour=start_hour, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 
@@ -414,7 +406,6 @@ class Scheduler:
                     f"next at {next_time.strftime('%d.%m.%Y %H:%M')} MSK"
                 )
             else:
-                # Очередь пуста — начинаем с расчёта от текущего времени
                 minutes_since_start = (msk_now.hour - start_hour) * 60 + msk_now.minute
                 if minutes_since_start < 0:
                     next_time = msk_now.replace(hour=start_hour, minute=0, second=0, microsecond=0)
@@ -430,7 +421,6 @@ class Scheduler:
             for i, post in enumerate(posts_to_publish):
                 if i > 0:
                     next_time = next_time + timedelta(minutes=interval_minutes)
-                    # Проверяем активные часы для каждого следующего поста
                     if next_time.hour >= end_hour:
                         next_time = next_time.replace(hour=start_hour, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 
