@@ -111,12 +111,19 @@ async def project_menu_callback(update: Update, context: ContextTypes.DEFAULT_TY
     
     target_name = target.channel_title if target else 'не задана'
     
+    # post_interval_hours теперь хранит минуты
+    if project.post_interval_hours < 60:
+        interval_display = f"каждые {project.post_interval_hours} мин"
+    else:
+        hours = project.post_interval_hours // 60
+        interval_display = f"каждые {hours} ч"
+    
     text = (
         f"📁 <b>Проект «{project.name}»</b>\n\n"
         f"📥 Источников: {sources_count}\n"
         f"📤 Цель: {target_name}\n"
         f"⏰ Парсинг: каждые {project.check_interval_minutes} мин\n"
-        f"📅 Постинг: каждые {project.post_interval_hours} ч\n"
+        f"📅 Постинг: {interval_display}\n"
         f"🕐 Активные часы: {project.active_hours_start}:00 – {project.active_hours_end}:00\n"
         f"📊 Сегодня: спарсено {project.posts_parsed_today} / опубликовано {project.posts_posted_today}\n"
         f"📬 В очереди: {pending}\n"
@@ -158,7 +165,6 @@ async def projects_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(f"❌ {limit_msg}")
             return
         
-        # === СБРОС ВСЕХ АКТИВНЫХ ДИАЛОГОВ ПЕРЕД СОЗДАНИЕМ ПРОЕКТА ===
         await _reset_all_dialogs(context)
         context.user_data['awaiting_project_name'] = True
         
@@ -269,9 +275,8 @@ async def handle_project_name(update: Update, context: ContextTypes.DEFAULT_TYPE
     if not context.user_data.get('awaiting_project_name'):
         return
     
-    # === СБРОС ВСЕХ ОСТАЛЬНЫХ ДИАЛОГОВ ===
     await _reset_all_dialogs(context)
-    context.user_data['awaiting_project_name'] = True  # возвращаем флаг
+    context.user_data['awaiting_project_name'] = True
     
     name = update.message.text.strip()
     telegram_id = update.effective_user.id
@@ -297,7 +302,7 @@ async def handle_project_name(update: Update, context: ContextTypes.DEFAULT_TYPE
             user_id=telegram_id,
             name=name,
             check_interval_minutes=user.min_check_interval_minutes,
-            post_interval_hours=max(user.min_post_interval_minutes // 60, 1),
+            post_interval_hours=max(user.min_post_interval_minutes, 60),  # в минутах
             active_hours_start=Config.DEFAULT_ACTIVE_HOURS_START,
             active_hours_end=Config.DEFAULT_ACTIVE_HOURS_END
         )
@@ -338,7 +343,7 @@ async def show_project_stats(query, project_id: int):
         f"📥 Источников: {sources_count}\n"
         f"📤 Цель: {target_name}\n"
         f"⏰ Интервал парсинга: {project.check_interval_minutes} мин\n"
-        f"📅 Интервал публикации: {project.post_interval_hours} ч\n"
+        f"📅 Интервал публикации: {project.post_interval_hours} мин\n"
         f"📈 Сегодня: спарсено {project.posts_parsed_today}, опубликовано {project.posts_posted_today}\n"
         f"📬 В очереди: {pending}"
     )
@@ -350,6 +355,3 @@ async def show_project_stats(query, project_id: int):
 async def back_to_projects_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Возвращает к списку проектов."""
     query = update.callback_query
-    await query.answer()
-    context.user_data.pop(CURRENT_PROJECT_KEY, None)
-    await my_projects(update, context)
