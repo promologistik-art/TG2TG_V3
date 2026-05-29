@@ -146,8 +146,12 @@ def calculate_next_post_time(project) -> Optional[datetime]:
 
 
 def get_moscow_time() -> datetime:
+    """Возвращает текущее московское время."""
+    import pytz
     moscow_tz = pytz.timezone("Europe/Moscow")
-    return datetime.now(moscow_tz)
+    # Берём UTC и конвертируем — надёжнее, чем полагаться на системное время
+    utc_now = datetime.utcnow().replace(tzinfo=pytz.UTC)
+    return utc_now.astimezone(moscow_tz)
 
 
 def format_datetime(dt: datetime) -> str:
