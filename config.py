@@ -24,15 +24,21 @@ class Config:
     
     TIMEZONE = "Europe/Moscow"
     
-    # Пути
-    DATA_DIR = "data"
+    # Пути — всё в общем хранилище bothost.ru
+    SHARED_DIR = os.getenv("SHARED_DIR", "/app/shared")
+    TEMP_DIR = os.path.join(SHARED_DIR, "temp")
+    DATA_DIR = os.path.join(SHARED_DIR, "data")
     DB_PATH = os.path.join(DATA_DIR, "bot.db")
-    TEMP_DIR = "temp"
-    BACKUP_DIR = "backups"
+    BACKUP_DIR = os.path.join(SHARED_DIR, "backups")
     
+    # Таймауты
     SCRAPER_TIMEOUT = 30
     SCRAPER_RETRIES = 3
     SCRAPER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    
+    BOT_CONNECT_TIMEOUT = int(os.getenv("BOT_CONNECT_TIMEOUT", "30"))
+    BOT_READ_TIMEOUT = int(os.getenv("BOT_READ_TIMEOUT", "60"))
+    BOT_WRITE_TIMEOUT = int(os.getenv("BOT_WRITE_TIMEOUT", "60"))
 
     @classmethod
     def validate(cls):
