@@ -375,10 +375,10 @@ class Scheduler:
             
             msk_now = get_moscow_time().replace(tzinfo=None)
             # post_interval_hours теперь хранит минуты
+            # Config.MIN_POST_INTERVAL_MINUTES убран — ограничение уже в user.min_post_interval_minutes
             interval_minutes = max(
                 project.post_interval_hours,
-                user.min_post_interval_minutes,
-                Config.MIN_POST_INTERVAL_MINUTES
+                user.min_post_interval_minutes
             )
             start_hour = project.active_hours_start
             end_hour = project.active_hours_end
